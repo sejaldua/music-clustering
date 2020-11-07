@@ -7,7 +7,7 @@ import json
 
 def load_config():
     global user_config
-    stream = open('config.yaml')
+    stream = open('../config.yaml')
     user_config = yaml.load(stream)
     # pprint(user_config)
 
