@@ -18,6 +18,7 @@ from sklearn.preprocessing import MinMaxScaler
 import plotly.graph_objects as go
 from pathlib import Path
 import streamlit as st
+from math import sqrt
 
 def main():
     df = pd.DataFrame(columns=['name', 'artist', 'track_URI', 'acousticness', 'danceability', 'energy', 'instrumentalness', 'liveness', 'loudness', 'speechiness', 'tempo', 'valence'])
@@ -25,21 +26,22 @@ def main():
     df = get_features_for_playlist(df, user_config['username'], playlist_uri)
     st.write(df)
     # page = st.sidebar.selectbox("Choose a page", ["Homepage", "Mechanical", "Environmental"])
-    x_axis = list(df['name'])
-    y_axis = st.selectbox("Choose a variable for the y-axis", list(df.columns)[3:], index=2)
-    visualize_data(df, x_axis, y_axis)
-    
+    # x_axis = list(df['name'])
+    # y_axis = st.selectbox("Choose a variable for the y-axis", list(df.columns)[3:], index=2)
+    # visualize_data(df, x_axis, y_axis)
+    clustered_df = kmeans(df)
+    visualize_clusters(clustered_df)
 
 
-# def visualize_clusters(df):
-#     graph = alt.Chart(df.reset_index()).mark_circle(size=60).encode(
-#         x=alt.X('Component 2'),
-#         y=alt.Y('Component 1'),
-#         color=alt.Color('Cluster', scale=alt.Scale(scheme='category20b')),
-#         tooltip=['Material Name']
-#     ).interactive()
+def visualize_clusters(df):
+    graph = alt.Chart(df.reset_index()).mark_circle(size=60).encode(
+        x=alt.X('Component 2'),
+        y=alt.Y('Component 1'),
+        color=alt.Color('Cluster', scale=alt.Scale(scheme='category20b')),
+        tooltip=['name', 'artist']
+    ).interactive()
 
-#     st.altair_chart(graph, use_container_width=True)
+    st.altair_chart(graph, use_container_width=True)
 
 # Get Spotipy credentials from config
 def load_config():
@@ -47,7 +49,7 @@ def load_config():
     user_config = yaml.load(stream, Loader=yaml.FullLoader)
     return user_config
 
-@st.cache()
+@st.cache(allow_output_mutation=True)
 def get_token(user_config):
     token = util.prompt_for_user_token(user_config['username'], 
         scope='playlist-read-private', 
@@ -83,7 +85,7 @@ def get_playlist_info(username, playlist_uri):
     
     return names, artists, uris
 
-# Extract features from each track in a playlist
+@st.cache(allow_output_mutation=True)
 def get_features_for_playlist(df, username, uri):
     # get all track metadata from given playlist
     names, artists, uris = get_playlist_info(username, uri)
@@ -104,6 +106,20 @@ def get_features_for_playlist(df, username, uri):
         df.loc[len(df.index)] = row
     return df
 
+def optimal_number_of_clusters(wcss):
+    x1, y1 = 2, wcss[0]
+    x2, y2 = 20, wcss[len(wcss)-1]
+
+    distances = []
+    for i in range(len(wcss)):
+        x0 = i+2
+        y0 = wcss[i]
+        numerator = abs((y2-y1)*x0 - (x2-x1)*y0 + x2*y1 - y2*x1)
+        denominator = sqrt((y2 - y1)**2 + (x2 - x1)**2)
+        distances.append(numerator/denominator)
+    
+    return distances.index(max(distances)) + 2
+
 def visualize_data(df, x_axis, y_axis):
     graph = alt.Chart(df.reset_index()).mark_bar().encode(
         x=alt.X('name', sort='y'),
@@ -112,7 +128,40 @@ def visualize_data(df, x_axis, y_axis):
 
     st.altair_chart(graph, use_container_width=True)
 
-
+@st.cache(allow_output_mutation=True)
+def kmeans(df):
+    df_X = df.drop(columns=df.columns[:3])
+    print("Standard scaler and PCA")
+    scaler = StandardScaler()
+    X_std = scaler.fit_transform(df_X) 
+    pca = PCA()
+    pca.fit(X_std)
+    evr = pca.explained_variance_ratio_
+    for i, exp_var in enumerate(evr.cumsum()):
+        if exp_var >= 0.8:
+            n_comps = i + 1
+            break
+    print("Finding optimal number of components", n_comps)
+    pca = PCA(n_components=n_comps)
+    pca.fit(X_std)
+    scores_pca = pca.transform(X_std)
+    wcss = []
+    for i in range(1, 21):
+        kmeans_pca = KMeans(i, init='k-means++', random_state=42)
+        kmeans_pca.fit(scores_pca)
+        wcss.append(kmeans_pca.inertia_)
+    n_clusters = optimal_number_of_clusters(wcss)
+    print("Finding optimal number of clusters", n_clusters)
+    print("Performing KMeans")
+    kmeans_pca = KMeans(n_clusters=n_clusters, init='k-means++', random_state=42)
+    kmeans_pca.fit(scores_pca)
+    df_seg_pca_kmeans = pd.concat([df_X.reset_index(drop=True), pd.DataFrame(scores_pca)], axis=1)
+    df_seg_pca_kmeans.columns.values[(-1 * n_comps):] = ["Component " + str(i+1) for i in range(n_comps)]
+    df_seg_pca_kmeans['Cluster'] = kmeans_pca.labels_
+    df['Cluster'] = df_seg_pca_kmeans['Cluster']
+    df['Component 1'] = df_seg_pca_kmeans['Component 1']
+    df['Component 2'] = df_seg_pca_kmeans['Component 2']
+    return df
 
 
 if __name__ == "__main__":
