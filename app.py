@@ -17,8 +17,10 @@ import altair as alt
 from sklearn.preprocessing import MinMaxScaler
 import plotly.graph_objects as go
 from pathlib import Path
+from kneed import KneeLocator
 import streamlit as st
 from math import sqrt
+
 
 def main():
     df = pd.DataFrame(columns=['name', 'artist', 'track_URI', 'acousticness', 'danceability', 'energy', 'instrumentalness', 'liveness', 'loudness', 'speechiness', 'tempo', 'valence'])
@@ -118,7 +120,7 @@ def optimal_number_of_clusters(wcss):
         denominator = sqrt((y2 - y1)**2 + (x2 - x1)**2)
         distances.append(numerator/denominator)
     
-    return distances.index(max(distances)) + 2
+    return distances.index(max(distances)) + 1
 
 def visualize_data(df, x_axis, y_axis):
     graph = alt.Chart(df.reset_index()).mark_bar().encode(
@@ -146,11 +148,11 @@ def kmeans(df):
     pca.fit(X_std)
     scores_pca = pca.transform(X_std)
     wcss = []
-    for i in range(1, 21):
+    for i in range(2, 12):
         kmeans_pca = KMeans(i, init='k-means++', random_state=42)
         kmeans_pca.fit(scores_pca)
         wcss.append(kmeans_pca.inertia_)
-    n_clusters = optimal_number_of_clusters(wcss)
+    n_clusters = KneeLocator([i for i in range(2, 12)], wcss, curve='convex', direction='decreasing').knee
     print("Finding optimal number of clusters", n_clusters)
     print("Performing KMeans")
     kmeans_pca = KMeans(n_clusters=n_clusters, init='k-means++', random_state=42)
