@@ -31,7 +31,8 @@ def main():
     # x_axis = list(df['name'])
     # y_axis = st.selectbox("Choose a variable for the y-axis", list(df.columns)[3:], index=2)
     # visualize_data(df, x_axis, y_axis)
-    clustered_df = kmeans(df)
+    optimal_k_graph, clustered_df = kmeans(df)
+    st.write(optimal_k_graph)
     visualize_clusters(clustered_df)
 
 
@@ -130,6 +131,14 @@ def visualize_data(df, x_axis, y_axis):
 
     st.altair_chart(graph, use_container_width=True)
 
+def num_clusters_graph(wcss):
+    fig = plt.figure()
+    plt.xlabel('number of clusters k')
+    plt.ylabel('within cluster sum of squares (wcss)')
+    plt.plot([i for i in range(1, 14)], wcss, 'bx-')
+    plt.vlines(KneeLocator([i for i in range(1, 14)], wcss, curve='convex', direction='decreasing').knee, plt.ylim()[0], plt.ylim()[1], linestyles='dashed')
+    return fig
+
 @st.cache(allow_output_mutation=True)
 def kmeans(df):
     df_X = df.drop(columns=df.columns[:3])
@@ -148,12 +157,13 @@ def kmeans(df):
     pca.fit(X_std)
     scores_pca = pca.transform(X_std)
     wcss = []
-    for i in range(2, 12):
+    for i in range(1, 14):
         kmeans_pca = KMeans(i, init='k-means++', random_state=42)
         kmeans_pca.fit(scores_pca)
         wcss.append(kmeans_pca.inertia_)
-    n_clusters = KneeLocator([i for i in range(2, 12)], wcss, curve='convex', direction='decreasing').knee
+    n_clusters = KneeLocator([i for i in range(1, 14)], wcss, curve='convex', direction='decreasing').knee
     print("Finding optimal number of clusters", n_clusters)
+    fig = num_clusters_graph(wcss)
     print("Performing KMeans")
     kmeans_pca = KMeans(n_clusters=n_clusters, init='k-means++', random_state=42)
     kmeans_pca.fit(scores_pca)
@@ -163,7 +173,7 @@ def kmeans(df):
     df['Cluster'] = df_seg_pca_kmeans['Cluster']
     df['Component 1'] = df_seg_pca_kmeans['Component 1']
     df['Component 2'] = df_seg_pca_kmeans['Component 2']
-    return df
+    return fig, df
 
 
 if __name__ == "__main__":
