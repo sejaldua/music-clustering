@@ -19,23 +19,50 @@ from math import sqrt
 
 
 def main():
-    df = pd.DataFrame(columns=['name', 'artist', 'track_URI', 'acousticness', 'danceability', 'energy', 'instrumentalness', 'liveness', 'loudness', 'speechiness', 'tempo', 'valence'])
-    playlist_uri = st.text_input("Please enter a playlist URI", 'spotify:playlist:2U4FxOBn1Ga2INJbD3AGBu')
-    playlist_name, df = get_features_for_playlist(df, user_config['username'], playlist_uri)
-    st.write("### " + playlist_name, df)
-    # page = st.sidebar.selectbox("Choose a page", ["Homepage", "Mechanical", "Environmental"])
-    # x_axis = list(df['name'])
-    # y_axis = st.selectbox("Choose a variable for the y-axis", list(df.columns)[3:], index=2)
-    # visualize_data(df, x_axis, y_axis)
-    optimal_k_graph, (ax1, ax2), clustered_df = kmeans(df)
-    st.write(optimal_k_graph)
-    visualize_clusters(clustered_df)
+    num_playlists = st.number_input('How many playlists would you like to cluster?', 1, 5)
+    playlists = playlist_user_input(num_playlists)
+    if st.button("Preview Songs"):
+        print(playlists)
+        df = concatenate(playlists)
+        if df is None:
+            st.warning("One of your playlist URIs was not entered properly")
+            st.stop()
+        else:
+            st.write(df)
 
+    # if st.button("Run Algorithm"):
+            # x_axis = list(df['name'])
+            # y_axis = st.selectbox("Choose a variable for the y-axis", list(df.columns)[3:], index=2)
+            # visualize_data(df, x_axis, y_axis)
+            # optimal_k_graph, (ax1, ax2), clustered_df = kmeans(df)
+            clustered_df = kmeans(df)
+            # st.write(optimal_k_graph)
+            visualize_clusters(clustered_df)
+    else:
+        pass
+
+def playlist_user_input(num_playlists):
+    playlists = []
+    defaults = ["spotify:playlist:4ZvKulfjQx6Xi0Pxm6tlC2", "spotify:playlist:7iAkkvQ11nmfS1Rv1N5YYr"]
+    for i in range(num_playlists):
+        playlists.append(st.text_input("Playlist URI " + str(i+1), defaults[i]))
+    return playlists
+
+@st.cache(allow_output_mutation=True)
+def concatenate(playlists):
+    df = pd.DataFrame(columns=['name', 'artist', 'track_URI', 'playlist', 'acousticness', 'danceability', 'energy', 'instrumentalness', 'liveness', 'loudness', 'speechiness', 'tempo', 'valence'])
+    if all(playlists):
+        for playlist_uri in playlists:
+            df = get_features_for_playlist(df, user_config['username'], playlist_uri)
+        return df
+    else:
+        return None
 
 def visualize_clusters(df):
-    graph = alt.Chart(df.reset_index()).mark_circle(size=60).encode(
+    graph = alt.Chart(df.reset_index()).mark_point(filled=True, size=60).encode(
         x=alt.X('Component 2'),
         y=alt.Y('Component 1'),
+        shape=alt.Shape('playlist:N', scale=alt.Scale(range=["circle", "diamond", "square", "triangle-down", "triangle-up"])),
         color=alt.Color('Cluster', scale=alt.Scale(scheme='category20b')),
         tooltip=['name', 'artist']
     ).interactive()
@@ -98,12 +125,12 @@ def get_features_for_playlist(df, username, uri):
         audio_features = sp.audio_features(track_uri)
 
         # get relevant audio features
-        feature_subset = [audio_features[0][col] for col in df.columns if col not in ["name", "artist", "track_URI"]]
+        feature_subset = [audio_features[0][col] for col in df.columns if col not in ["name", "artist", "track_URI", "playlist"]]
 
         # compose a row of the dataframe by flattening the list of audio features
-        row = [name, artist, track_uri, *feature_subset]
+        row = [name, artist, track_uri, playlist_name, *feature_subset]
         df.loc[len(df.index)] = row
-    return playlist_name, df
+    return df
 
 def optimal_number_of_clusters(wcss):
     x1, y1 = 2, wcss[0]
@@ -143,7 +170,8 @@ def num_clusters_graph(ax, max_clusters, wcss):
 
 @st.cache(allow_output_mutation=True)
 def kmeans(df):
-    df_X = df.drop(columns=df.columns[:3])
+    print("got here")
+    df_X = df.drop(columns=df.columns[:4])
     print("Standard scaler and PCA")
     scaler = StandardScaler()
     X_std = scaler.fit_transform(df_X) 
@@ -166,9 +194,9 @@ def kmeans(df):
         wcss.append(kmeans_pca.inertia_)
     n_clusters = KneeLocator([i for i in range(1, max_clusters)], wcss, curve='convex', direction='decreasing').knee
     print("Finding optimal number of clusters", n_clusters)
-    fig, (ax1, ax2) = plt.subplots(1, 2)
-    ax1 = num_components_graph(ax1, len(df_X.columns), evr)
-    ax2 = num_clusters_graph(ax2, max_clusters, wcss)
+    # fig, (ax1, ax2) = plt.subplots(1, 2)
+    # ax1 = num_components_graph(ax1, len(df_X.columns), evr)
+    # ax2 = num_clusters_graph(ax2, max_clusters, wcss)
     print("Performing KMeans")
     kmeans_pca = KMeans(n_clusters=n_clusters, init='k-means++', random_state=42)
     kmeans_pca.fit(scores_pca)
@@ -178,8 +206,8 @@ def kmeans(df):
     df['Cluster'] = df_seg_pca_kmeans['Cluster']
     df['Component 1'] = df_seg_pca_kmeans['Component 1']
     df['Component 2'] = df_seg_pca_kmeans['Component 2']
-    fig.tight_layout()
-    return fig, (ax1, ax2), df
+    # fig.tight_layout()
+    return df
 
 
 if __name__ == "__main__":
