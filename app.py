@@ -1,3 +1,4 @@
+from seaborn.palettes import color_palette
 import spotipy
 import yaml
 import spotipy.util as util
@@ -16,14 +17,14 @@ from pathlib import Path
 from kneed import KneeLocator
 import streamlit as st
 from math import sqrt
-
+from matplotlib import cm
 
 def main():
-    num_playlists = st.number_input('How many playlists would you like to cluster?', 1, 5)
+    num_playlists = st.number_input('How many playlists would you like to cluster?', 1, 5, 3)
     playlists = playlist_user_input(num_playlists)
-    if st.button("Preview Songs"):
+    if st.button("Run Algorithm"):
         print(playlists)
-        df = concatenate(playlists)
+        df = concatenate_playlists(playlists)
         if df is None:
             st.warning("One of your playlist URIs was not entered properly")
             st.stop()
@@ -35,21 +36,27 @@ def main():
             # y_axis = st.selectbox("Choose a variable for the y-axis", list(df.columns)[3:], index=2)
             # visualize_data(df, x_axis, y_axis)
             # optimal_k_graph, (ax1, ax2), clustered_df = kmeans(df)
-            clustered_df = kmeans(df)
+            clustered_df, n_clusters = kmeans(df)
             # st.write(optimal_k_graph)
-            visualize_clusters(clustered_df)
+            visualize_clusters(clustered_df, n_clusters)
+            cluster_labels = clustered_df['Cluster']
+            orig = clustered_df.drop(columns=['Cluster', "Component 1", "Component 2"])
+            norm_df = make_normalized_df(orig, 4)
+            norm_df.insert(4, 'cluster', cluster_labels)
+            fig = make_radar_chart(norm_df, n_clusters)
+            st.write(fig)
     else:
         pass
 
 def playlist_user_input(num_playlists):
     playlists = []
-    defaults = ["spotify:playlist:4ZvKulfjQx6Xi0Pxm6tlC2", "spotify:playlist:7iAkkvQ11nmfS1Rv1N5YYr"]
+    defaults = ["spotify:playlist:4ZvKulfjQx6Xi0Pxm6tlC2", "spotify:playlist:7iAkkvQ11nmfS1Rv1N5YYr", "spotify:playlist:6hQBKDy8WTuf0lHEKgEnZo"]
     for i in range(num_playlists):
         playlists.append(st.text_input("Playlist URI " + str(i+1), defaults[i]))
     return playlists
 
 @st.cache(allow_output_mutation=True)
-def concatenate(playlists):
+def concatenate_playlists(playlists):
     df = pd.DataFrame(columns=['name', 'artist', 'track_URI', 'playlist', 'acousticness', 'danceability', 'energy', 'instrumentalness', 'liveness', 'loudness', 'speechiness', 'tempo', 'valence'])
     if all(playlists):
         for playlist_uri in playlists:
@@ -58,16 +65,7 @@ def concatenate(playlists):
     else:
         return None
 
-def visualize_clusters(df):
-    graph = alt.Chart(df.reset_index()).mark_point(filled=True, size=60).encode(
-        x=alt.X('Component 2'),
-        y=alt.Y('Component 1'),
-        shape=alt.Shape('playlist:N', scale=alt.Scale(range=["circle", "diamond", "square", "triangle-down", "triangle-up"])),
-        color=alt.Color('Cluster', scale=alt.Scale(scheme='category20b')),
-        tooltip=['name', 'artist']
-    ).interactive()
 
-    st.altair_chart(graph, use_container_width=True)
 
 # Get Spotipy credentials from config
 def load_config():
@@ -118,8 +116,6 @@ def get_features_for_playlist(df, username, uri):
     
     # iterate through each track to get audio features and save data into dataframe
     for name, artist, track_uri in zip(names, artists, uris):
-        # print(json.dumps(track_uri, indent=4))              
-        # ^ DEBUG STATEMENT ^
         
         # access audio features for given track URI via spotipy 
         audio_features = sp.audio_features(track_uri)
@@ -207,8 +203,72 @@ def kmeans(df):
     df['Component 1'] = df_seg_pca_kmeans['Component 1']
     df['Component 2'] = df_seg_pca_kmeans['Component 2']
     # fig.tight_layout()
-    return df
+    return df, n_clusters
 
+def get_color_range(n_clusters):
+    cmap = cm.get_cmap('tab20b')    
+    range_ = []
+    for i in range(n_clusters):
+        color = 'rgb('
+        mapped = cmap(i/n_clusters)
+        for j in range(3):
+            color += str(int(mapped[j] * 255))
+            if j != 2:
+                color += ", "
+            else:
+                color += ")"
+        range_.append(color)
+    return range_
+
+def visualize_clusters(df, n_clusters):
+    range_ = get_color_range(n_clusters)
+    graph = alt.Chart(df.reset_index()).mark_point(filled=True, size=60).encode(
+        x=alt.X('Component 2'),
+        y=alt.Y('Component 1'),
+        shape=alt.Shape('playlist:N', scale=alt.Scale(range=["circle", "diamond", "square", "triangle-down", "triangle-up"])),
+        color=alt.Color('Cluster', scale=alt.Scale(domain=[i for i in range(n_clusters)], range=range_)),
+        tooltip=['name', 'artist']
+    ).interactive()
+    st.altair_chart(graph, use_container_width=True)
+
+def make_normalized_df(df, col_sep):
+    non_features = df[df.columns[:col_sep]]
+    features = df[df.columns[col_sep:]]
+    norm = MinMaxScaler().fit_transform(features)
+    scaled = pd.DataFrame(norm, index=df.index, columns = df.columns[col_sep:])
+    return pd.concat([non_features, scaled], axis=1)
+
+def make_radar_chart(norm_df, n_clusters):
+    fig = go.Figure()
+    cmap = cm.get_cmap('tab20b')
+    angles = list(norm_df.columns[5:])
+    angles.append(angles[0])
+
+    layoutdict = dict(
+                radialaxis=dict(
+                visible=True,
+                range=[0, 1]
+                ))
+
+    for i in range(n_clusters):
+        subset = norm_df[norm_df['cluster'] == i]
+        data = [np.mean(subset[col]) for col in subset.columns[5:]]
+        data.append(data[0])
+        fig.add_trace(go.Scatterpolar(
+            r=data,
+            theta=angles,
+            # fill='toself',
+            # fillcolor = 'rgba' + str(cmap(i/n_clusters)),
+            mode='lines',
+            line_color='rgba' + str(cmap(i/n_clusters)),
+            name="Cluster " + str(i)))
+        
+    fig.update_layout(
+            polar=layoutdict,
+            showlegend=True
+    )
+    fig.update_traces()
+    return fig
 
 if __name__ == "__main__":
     user_config = load_config()
