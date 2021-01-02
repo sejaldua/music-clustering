@@ -4,6 +4,6 @@ email = \"sejaldua@gmail.com\"
 " > ~/.streamlit/credentials.toml
 echo "[server]
 headless = true
-port = $PORT
+port = 3000
 enableCORS = false
 " > ~/.streamlit/config.toml
