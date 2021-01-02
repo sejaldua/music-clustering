@@ -94,8 +94,8 @@ def get_token():
     # return spotipy.Spotify(auth=token)
     # print(os.environ.get('CLIENT_ID'))
     auth_manager = spotipy.oauth2.SpotifyOAuth(scope='playlist-read-private playlist-modify-public', 
-        # client_id=os.environ.get('SPOTIPY_CLIENT_ID'), 
-        # client_secret=os.environ.get('SPOTIPY_CLIENT_SECRET'), 
+        client_id=os.environ.get('CLIENT_ID'), 
+        client_secret=os.environ.get('CLIENT_SECRET'), 
         redirect_uri=os.environ.get('REDIRECT_URI'), 
         show_dialog=True)
     if not auth_manager.get_cached_token():
