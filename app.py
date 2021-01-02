@@ -1,5 +1,5 @@
 import spotipy
-import yaml
+import os
 import spotipy.util as util
 import matplotlib.pyplot as plt
 import numpy as np
@@ -69,7 +69,7 @@ def concatenate_playlists(playlists):
     df = pd.DataFrame(columns=['name', 'artist', 'track_URI', 'playlist', 'acousticness', 'danceability', 'energy', 'instrumentalness', 'liveness', 'loudness', 'speechiness', 'tempo', 'valence'])
     if all(playlists):
         for playlist_uri in playlists:
-            df = get_features_for_playlist(df, user_config['username'], playlist_uri)
+            df = get_features_for_playlist(df, os.environ.get('USERNAME'), playlist_uri)
         return df
     else:
         return None
@@ -83,12 +83,12 @@ def load_config():
     return user_config
 
 @st.cache(allow_output_mutation=True)
-def get_token(user_config):
-    token = util.prompt_for_user_token(user_config['username'], 
+def get_token():
+    token = util.prompt_for_user_token(os.environ.get('USERNAME'), 
         scope='playlist-read-private', 
-        client_id=user_config['client_id'], 
-        client_secret=user_config['client_secret'], 
-        redirect_uri=user_config['redirect_uri'])
+        client_id=os.environ.get('CLIENT_ID'), 
+        client_secret=os.environ.get('CLIENT_SECRET'), 
+        redirect_uri=os.environ.get('REDIRECT_URI'))
     return spotipy.Spotify(auth=token)
 
 # A function to extract track names and URIs from a playlist
@@ -295,10 +295,10 @@ def preview_cluster_playlist(df, cluster):
     #     pass
 
 if __name__ == "__main__":
-    user_config = load_config()
+    # user_config = load_config()
     
     # Initialize Spotify API token
-    sp = get_token(user_config)
+    sp = get_token()
     # client_credentials_manager = SpotifyClientCredentials(client_id=user_config['client_id'], client_secret=user_config['client_secret'])
     # sp = spotipy.Spotify(client_credentials_manager=client_credentials_manager)
 
