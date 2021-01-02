@@ -1,5 +1,4 @@
 altair==4.1.0
-numpy==1.17.2
 matplotlib==3.1.1
 spotipy==2.16.1
 kneed==0.7.0
