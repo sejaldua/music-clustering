@@ -13,16 +13,22 @@ sns.set()
 import altair as alt
 from sklearn.preprocessing import MinMaxScaler
 import plotly.graph_objects as go
-from pathlib import Path
 from kneed import KneeLocator
 import streamlit as st
 from math import sqrt
 from matplotlib import cm
+import SessionState
+from spotipy.oauth2 import SpotifyClientCredentials
+
+
+session_state = SessionState.get(checkboxed=False)
 
 def main():
-    num_playlists = st.number_input('How many playlists would you like to cluster?', 1, 5, 3)
+    flag = False
+    num_playlists = st.sidebar.number_input('How many playlists would you like to cluster?', 1, 5, 3)
     playlists = playlist_user_input(num_playlists)
-    if st.button("Run Algorithm"):
+    if st.button("Run Algorithm") or session_state.checkboxed:
+        session_state.checkboxed = True
         print(playlists)
         df = concatenate_playlists(playlists)
         if df is None:
@@ -31,20 +37,26 @@ def main():
         else:
             st.write(df)
 
+
     # if st.button("Run Algorithm"):
             # x_axis = list(df['name'])
             # y_axis = st.selectbox("Choose a variable for the y-axis", list(df.columns)[3:], index=2)
             # visualize_data(df, x_axis, y_axis)
-            # optimal_k_graph, (ax1, ax2), clustered_df = kmeans(df)
             clustered_df, n_clusters = kmeans(df)
-            # st.write(optimal_k_graph)
             visualize_clusters(clustered_df, n_clusters)
+            
             cluster_labels = clustered_df['Cluster']
             orig = clustered_df.drop(columns=['Cluster', "Component 1", "Component 2"])
             norm_df = make_normalized_df(orig, 4)
             norm_df.insert(4, 'cluster', cluster_labels)
             fig = make_radar_chart(norm_df, n_clusters)
             st.write(fig)
+
+            metadata_df = clustered_df[clustered_df.columns[:4]]
+            metadata_df.insert(2, 'cluster', cluster_labels)
+            keys = sorted(list(metadata_df["cluster"].unique()))
+            cluster = st.selectbox("Choose a cluster to preview and/or export tracks", keys, index=0)
+            preview_cluster_playlist(metadata_df, cluster)
     else:
         pass
 
@@ -52,7 +64,7 @@ def playlist_user_input(num_playlists):
     playlists = []
     defaults = ["spotify:playlist:4ZvKulfjQx6Xi0Pxm6tlC2", "spotify:playlist:7iAkkvQ11nmfS1Rv1N5YYr", "spotify:playlist:6hQBKDy8WTuf0lHEKgEnZo"]
     for i in range(num_playlists):
-        playlists.append(st.text_input("Playlist URI " + str(i+1), defaults[i]))
+        playlists.append(st.sidebar.text_input("Playlist URI " + str(i+1), defaults[i]))
     return playlists
 
 @st.cache(allow_output_mutation=True)
@@ -270,9 +282,28 @@ def make_radar_chart(norm_df, n_clusters):
     fig.update_traces()
     return fig
 
+def preview_cluster_playlist(df, cluster):
+    df = df[df['cluster'] == cluster]
+    st.write(df)
+    # if st.button("Export to playlist"):
+    #     result = sp.user_playlist_create(user_config['username'], 'cluster'+str(cluster), public=True, collaborative=False, description='')
+    #     playlist_id = result['id']
+    #     songs = list(df.loc[df['cluster'] == cluster]['track_URI'])
+    #     if len(songs) > 100:
+    #         sp.playlist_add_items(playlist_id, songs[:100])
+    #         sp.playlist_add_items(playlist_id, songs[100:])
+    #     else:
+    #         sp.playlist_add_items(playlist_id, songs)
+    # else:
+    #     pass
+
 if __name__ == "__main__":
     user_config = load_config()
-    sp = get_token(user_config)
+    
     # Initialize Spotify API token
+    sp = get_token(user_config)
+    # client_credentials_manager = SpotifyClientCredentials(client_id=user_config['client_id'], client_secret=user_config['client_secret'])
+    # sp = spotipy.Spotify(client_credentials_manager=client_credentials_manager)
+
     
     main()
