@@ -64,7 +64,7 @@ def playlist_user_input(num_playlists):
     playlists = []
     defaults = ["spotify:playlist:4ZvKulfjQx6Xi0Pxm6tlC2", "spotify:playlist:7iAkkvQ11nmfS1Rv1N5YYr", "spotify:playlist:6hQBKDy8WTuf0lHEKgEnZo"]
     for i in range(num_playlists):
-        playlists.append(st.sidebar.text_input("Playlist URI " + str(i+1), defaults[i]))
+        playlists.append(st.sidebar.text_input("Playlist URI " + str(i+1)))
     return playlists
 
 @st.cache(allow_output_mutation=True)
