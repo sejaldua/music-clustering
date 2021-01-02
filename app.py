@@ -20,7 +20,8 @@ from spotipy.oauth2 import SpotifyClientCredentials
 session_state = SessionState.get(checkboxed=False)
 
 def main():
-    flag = False
+    st.markdown("## Welcome to Playlist Blendr :wave:")
+    st.markdown("### This web app uses machine learning techniques to cluster music by similar audio features so that you can cultivate a cohesive vibe to satisfy your listening needs!")
     num_playlists = st.sidebar.number_input('How many playlists would you like to cluster?', 1, 5, 2)
     playlists = playlist_user_input(num_playlists)
     if st.sidebar.button("Run Algorithm") or session_state.checkboxed:
@@ -57,6 +58,7 @@ def main():
 def playlist_user_input(num_playlists):
     playlists = []
     defaults = ["spotify:playlist:4ZvKulfjQx6Xi0Pxm6tlC2", "spotify:playlist:7iAkkvQ11nmfS1Rv1N5YYr", "spotify:playlist:6hQBKDy8WTuf0lHEKgEnZo"]
+    st.sidebar.write("To locate a playlist URI, go to the playlist on Spotify, click the '...' button at the top, then go to Share > Copy Spotify URI")
     for i in range(num_playlists):
         playlists.append(st.sidebar.text_input("Playlist URI " + str(i+1)))
     return playlists
