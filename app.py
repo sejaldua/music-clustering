@@ -80,13 +80,15 @@ def load_config():
 @st.cache(allow_output_mutation=True)
 def get_token():
     print("generating token")
-    token = util.prompt_for_user_token(
-        username=os.environ.get('USERNAME'),
-        scope='playlist-read-private', 
-        client_id=os.environ.get('CLIENT_ID'), 
-        client_secret=os.environ.get('CLIENT_SECRET'), 
-        redirect_uri=os.environ.get('REDIRECT_URI'))
-    sp = spotipy.Spotify(auth=token)
+    # token = util.prompt_for_user_token(
+    #     username=os.environ.get('USERNAME'),
+    #     scope='playlist-read-private', 
+    #     client_id=os.environ.get('CLIENT_ID'), 
+    #     client_secret=os.environ.get('CLIENT_SECRET'), 
+    #     redirect_uri=os.environ.get('REDIRECT_URI'))
+    # sp = spotipy.Spotify(auth=token)
+    client_credentials_manager = SpotifyClientCredentials(client_id=os.environ.get('CLIENT_ID'), client_secret=os.environ.get('CLIENT_SECRET'))
+    sp = spotipy.Spotify(client_credentials_manager=client_credentials_manager)
     return sp
 
 # A function to extract track names and URIs from a playlist
@@ -303,8 +305,7 @@ if __name__ == "__main__":
     
     # Initialize Spotify API token
     sp = get_token()
-    # client_credentials_manager = SpotifyClientCredentials(client_id=os.environ.get('CLIENT_ID'), client_secret=os.environ.get('CLIENT_SECRET'))
-    # sp = spotipy.Spotify(client_credentials_manager=client_credentials_manager)
+
 
     
     main()
