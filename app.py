@@ -8,8 +8,6 @@ import pandas as pd
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
-import seaborn as sns
-sns.set()
 import altair as alt
 from sklearn.preprocessing import MinMaxScaler
 import plotly.graph_objects as go
