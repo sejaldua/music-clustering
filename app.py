@@ -85,6 +85,7 @@ def load_config():
 # @st.cache(allow_output_mutation=True)
 def get_token():
     print("generating token")
+    print("os.environ.get('REDIRECT_URI')")
     token = util.prompt_for_user_token( 
         scope='playlist-read-private', 
         client_id=os.environ.get('CLIENT_ID'), 
