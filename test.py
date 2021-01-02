@@ -1,14 +1,11 @@
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 
-client_credentials_manager = SpotifyClientCredentials()
-sp = spotipy.Spotify(client_credentials_manager=client_credentials_manager)
+import spotipy
 
-playlists = sp.user_playlists('spotify')
-while playlists:
-    for i, playlist in enumerate(playlists['items']):
-        print("%4d %s %s" % (i + 1 + playlists['offset'], playlist['uri'],  playlist['name']))
-    if playlists['next']:
-        playlists = sp.next(playlists)
-    else:
-        playlists = None
+from spotipy.oauth2 import SpotifyOAuth
+
+# set open_browser=False to prevent Spotipy from attempting to open the default browser
+spotify = spotipy.Spotify(auth_manager=SpotifyOAuth(show_dialog=True))
+
+print(spotify.me())

@@ -16,13 +16,13 @@ from math import sqrt
 from matplotlib import cm
 import SessionState
 from spotipy.oauth2 import SpotifyClientCredentials
-
+import requests
 
 session_state = SessionState.get(checkboxed=False)
 
 def main():
     flag = False
-    num_playlists = st.sidebar.number_input('How many playlists would you like to cluster?', 1, 5, 3)
+    num_playlists = st.sidebar.number_input('How many playlists would you like to cluster?', 1, 5, 2)
     playlists = playlist_user_input(num_playlists)
     if st.button("Run Algorithm") or session_state.checkboxed:
         session_state.checkboxed = True
@@ -82,14 +82,30 @@ def load_config():
     user_config = yaml.load(stream, Loader=yaml.FullLoader)
     return user_config
 
-@st.cache(allow_output_mutation=True)
+# @st.cache(allow_output_mutation=True)
 def get_token():
-    token = util.prompt_for_user_token(os.environ.get('USERNAME'), 
-        scope='playlist-read-private', 
-        client_id=os.environ.get('CLIENT_ID'), 
-        client_secret=os.environ.get('CLIENT_SECRET'), 
-        redirect_uri=os.environ.get('REDIRECT_URI'))
-    return spotipy.Spotify(auth=token)
+    print("generating token")
+    # token = util.prompt_for_user_token(os.environ.get('USERNAME'), 
+    #     scope='playlist-read-private', 
+    #     client_id=os.environ.get('CLIENT_ID'), 
+    #     client_secret=os.environ.get('CLIENT_SECRET'), 
+    #     redirect_uri=os.environ.get('REDIRECT_URI'),
+    #     show_dialog=True)
+    # return spotipy.Spotify(auth=token)
+    # print(os.environ.get('CLIENT_ID'))
+    auth_manager = spotipy.oauth2.SpotifyOAuth(scope='playlist-read-private playlist-modify-public', 
+        # client_id=os.environ.get('SPOTIPY_CLIENT_ID'), 
+        # client_secret=os.environ.get('SPOTIPY_CLIENT_SECRET'), 
+        redirect_uri=os.environ.get('REDIRECT_URI'), 
+        show_dialog=True)
+    if not auth_manager.get_cached_token():
+        auth_url = auth_manager.get_authorize_url()
+    # print(auth_url)
+    # html_string = f'<h2><a href="{auth_url}">Sign in</a></h2>'
+    # st.markdown(html_string, unsafe_allow_html=True)
+        res = requests.get(auth_url)
+    sp =  spotipy.Spotify(auth_manager=auth_manager)
+    st.markdown(f'<h2>Hi {sp.me()["display_name"]}</h2>', unsafe_allow_html=True)
 
 # A function to extract track names and URIs from a playlist
 def get_playlist_info(username, playlist_uri):
@@ -298,9 +314,9 @@ if __name__ == "__main__":
     # user_config = load_config()
     
     # Initialize Spotify API token
-    # sp = get_token()
-    client_credentials_manager = SpotifyClientCredentials(client_id=os.environ.get('CLIENT_ID'), client_secret=os.environ.get('CLIENT_SECRET'))
-    sp = spotipy.Spotify(client_credentials_manager=client_credentials_manager)
+    sp = get_token()
+    # client_credentials_manager = SpotifyClientCredentials(client_id=os.environ.get('CLIENT_ID'), client_secret=os.environ.get('CLIENT_SECRET'))
+    # sp = spotipy.Spotify(client_credentials_manager=client_credentials_manager)
 
     
     main()
