@@ -298,9 +298,9 @@ if __name__ == "__main__":
     # user_config = load_config()
     
     # Initialize Spotify API token
-    sp = get_token()
-    # client_credentials_manager = SpotifyClientCredentials(client_id=user_config['client_id'], client_secret=user_config['client_secret'])
-    # sp = spotipy.Spotify(client_credentials_manager=client_credentials_manager)
+    # sp = get_token()
+    client_credentials_manager = SpotifyClientCredentials(client_id=os.environ.get('CLIENT_ID'), client_secret=os.environ.get('CLIENT_SECRET'))
+    sp = spotipy.Spotify(client_credentials_manager=client_credentials_manager)
 
     
     main()
