@@ -1,4 +1,3 @@
-from seaborn.palettes import color_palette
 import spotipy
 import yaml
 import spotipy.util as util
