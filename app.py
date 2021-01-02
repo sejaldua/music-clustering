@@ -98,12 +98,15 @@ def get_token():
         client_secret=os.environ.get('CLIENT_SECRET'), 
         redirect_uri=os.environ.get('REDIRECT_URI'), 
         show_dialog=True)
-    if not auth_manager.get_cached_token():
-        auth_url = auth_manager.get_authorize_url()
-    # print(auth_url)
-    # html_string = f'<h2><a href="{auth_url}">Sign in</a></h2>'
-    # st.markdown(html_string, unsafe_allow_html=True)
-        res = requests.get(auth_url)
+    # if not auth_manager.get_cached_token():
+    #     auth_url = auth_manager.get_authorize_url()
+    #     # print(auth_url)
+    # # html_string = f'<h2><a href="{auth_url}">Sign in</a></h2>'
+    # # st.markdown(html_string, unsafe_allow_html=True)
+    #     res = requests.get(auth_url)
+    #     # print(res)
+    # else:
+    #     print(auth_manager.get_cached_token())
     sp =  spotipy.Spotify(auth_manager=auth_manager)
     st.markdown(f'<h2>Hi {sp.me()["display_name"]}</h2>', unsafe_allow_html=True)
 
