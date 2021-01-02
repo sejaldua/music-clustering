@@ -85,25 +85,25 @@ def load_config():
 # @st.cache(allow_output_mutation=True)
 def get_token():
     print("generating token")
-    token = util.prompt_for_user_token( 
-        scope='playlist-read-private', 
+    # token = util.prompt_for_user_token( 
+    #     scope='playlist-read-private', 
+    #     client_id=os.environ.get('CLIENT_ID'), 
+    #     client_secret=os.environ.get('CLIENT_SECRET'), 
+    #     redirect_uri=os.environ.get('REDIRECT_URI'),
+    #     open_browser=True)
+    # sp = spotipy.Spotify(auth=token)
+    # print(os.environ.get('CLIENT_ID'))
+    auth_manager = spotipy.oauth2.SpotifyOAuth(scope='playlist-read-private playlist-modify-public', 
         client_id=os.environ.get('CLIENT_ID'), 
         client_secret=os.environ.get('CLIENT_SECRET'), 
         redirect_uri=os.environ.get('REDIRECT_URI'),
-        show_dialog=False)
-    sp = spotipy.Spotify(auth=token)
-    # print(os.environ.get('CLIENT_ID'))
-    # auth_manager = spotipy.oauth2.SpotifyOAuth(scope='playlist-read-private playlist-modify-public', 
-        # client_id=os.environ.get('CLIENT_ID'), 
-        # client_secret=os.environ.get('CLIENT_SECRET'), 
-        # redirect_uri=os.environ.get('REDIRECT_URI'),
-        # show_dialog=True)
+        open_browser=True)
     
     # if not auth_manager.get_cached_token():
-    # # auth_manager.get_access_token(as_dict=False, check_cache=True)
-    #     auth_url = auth_manager.get_authorize_url()
+    auth_manager.get_access_token(as_dict=False, check_cache=True)
+        # auth_url = auth_manager.get_authorize_url()
     #     # print(auth_url)
-    #     res = requests.get(auth_url)
+        # res = requests.get(auth_url)
     #     # print(res.url)
         # code = auth_manager.parse_response_code(res.url)
         # print(code)
@@ -112,7 +112,7 @@ def get_token():
     # # st.markdown(html_string, unsafe_allow_html=True)
         # res = requests.get(auth_url)
     #     # print(res)
-    # sp =  spotipy.Spotify(auth_manager=auth_manager)
+    sp =  spotipy.Spotify(auth_manager=auth_manager)
     # me = sp.me()
     # pprint(me)
     st.markdown(f'<h2>Hi {sp.me()["display_name"]} 👋</h2>', unsafe_allow_html=True)
