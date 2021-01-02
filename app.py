@@ -16,7 +16,6 @@ from math import sqrt
 from matplotlib import cm
 import SessionState
 from spotipy.oauth2 import SpotifyClientCredentials
-import requests
 
 session_state = SessionState.get(checkboxed=False)
 
@@ -24,7 +23,7 @@ def main():
     flag = False
     num_playlists = st.sidebar.number_input('How many playlists would you like to cluster?', 1, 5, 2)
     playlists = playlist_user_input(num_playlists)
-    if st.button("Run Algorithm") or session_state.checkboxed:
+    if st.sidebar.button("Run Algorithm") or session_state.checkboxed:
         session_state.checkboxed = True
         print(playlists)
         df = concatenate_playlists(playlists)
@@ -33,27 +32,25 @@ def main():
             st.stop()
         else:
             st.write(df)
-
-
-    # if st.button("Run Algorithm"):
-            # x_axis = list(df['name'])
-            # y_axis = st.selectbox("Choose a variable for the y-axis", list(df.columns)[3:], index=2)
-            # visualize_data(df, x_axis, y_axis)
             clustered_df, n_clusters = kmeans(df)
-            visualize_clusters(clustered_df, n_clusters)
+            range_ = get_color_range(n_clusters)
+            visualize_clusters(clustered_df, n_clusters, range_)
             
             cluster_labels = clustered_df['Cluster']
             orig = clustered_df.drop(columns=['Cluster', "Component 1", "Component 2"])
-            norm_df = make_normalized_df(orig, 4)
-            norm_df.insert(4, 'cluster', cluster_labels)
-            fig = make_radar_chart(norm_df, n_clusters)
+            orig.insert(4, "cluster", cluster_labels)
+            norm_df = make_normalized_df(orig, 5)
+            fig, maxes = make_radar_chart(norm_df, n_clusters)
             st.write(fig)
 
-            metadata_df = clustered_df[clustered_df.columns[:4]]
-            metadata_df.insert(2, 'cluster', cluster_labels)
-            keys = sorted(list(metadata_df["cluster"].unique()))
-            cluster = st.selectbox("Choose a cluster to preview and/or export tracks", keys, index=0)
-            preview_cluster_playlist(metadata_df, cluster)
+            explore_df = orig.copy()
+            keys = sorted(list(explore_df["cluster"].unique()))
+            cluster = st.selectbox("Choose a cluster to preview", keys, index=0)
+            preview_df = preview_cluster_playlist(explore_df, cluster)
+            st.write(preview_df[preview_df.columns[:5]])
+            x_axis = list(preview_df['name'])
+            y_axis = st.selectbox("Choose a variable for the y-axis", list(preview_df.columns)[5:], index=maxes[cluster])
+            visualize_data(preview_df, x_axis, y_axis, n_clusters, range_)
     else:
         pass
 
@@ -74,48 +71,22 @@ def concatenate_playlists(playlists):
     else:
         return None
 
-
-
 # Get Spotipy credentials from config
 def load_config():
     stream = open('config.yaml')
     user_config = yaml.load(stream, Loader=yaml.FullLoader)
     return user_config
 
-# @st.cache(allow_output_mutation=True)
+@st.cache(allow_output_mutation=True)
 def get_token():
     print("generating token")
-    # token = util.prompt_for_user_token( 
-    #     scope='playlist-read-private', 
-    #     client_id=os.environ.get('CLIENT_ID'), 
-    #     client_secret=os.environ.get('CLIENT_SECRET'), 
-    #     redirect_uri=os.environ.get('REDIRECT_URI'),
-    #     open_browser=True)
-    # sp = spotipy.Spotify(auth=token)
-    # print(os.environ.get('CLIENT_ID'))
-    auth_manager = spotipy.oauth2.SpotifyOAuth(scope='playlist-read-private playlist-modify-public', 
+    token = util.prompt_for_user_token(
+        username=os.environ.get('USERNAME'),
+        scope='playlist-read-private', 
         client_id=os.environ.get('CLIENT_ID'), 
         client_secret=os.environ.get('CLIENT_SECRET'), 
-        redirect_uri=os.environ.get('REDIRECT_URI'),
-        open_browser=True)
-    
-    # if not auth_manager.get_cached_token():
-    auth_manager.get_access_token(as_dict=False, check_cache=True)
-        # auth_url = auth_manager.get_authorize_url()
-    #     # print(auth_url)
-        # res = requests.get(auth_url)
-    #     # print(res.url)
-        # code = auth_manager.parse_response_code(res.url)
-        # print(code)
-        # print(auth_url)
-    # # html_string = f'<h2><a href="{auth_url}">Sign in</a></h2>'
-    # # st.markdown(html_string, unsafe_allow_html=True)
-        # res = requests.get(auth_url)
-    #     # print(res)
-    sp =  spotipy.Spotify(auth_manager=auth_manager)
-    # me = sp.me()
-    # pprint(me)
-    st.markdown(f'<h2>Hi {sp.me()["display_name"]} 👋</h2>', unsafe_allow_html=True)
+        redirect_uri=os.environ.get('REDIRECT_URI'))
+    sp = spotipy.Spotify(auth=token)
     return sp
 
 # A function to extract track names and URIs from a playlist
@@ -178,12 +149,13 @@ def optimal_number_of_clusters(wcss):
     
     return distances.index(max(distances)) + 1
 
-def visualize_data(df, x_axis, y_axis):
+def visualize_data(df, x_axis, y_axis, n_clusters, range_):
     graph = alt.Chart(df.reset_index()).mark_bar().encode(
         x=alt.X('name', sort='y'),
         y=alt.Y(str(y_axis)+":Q"),
+        color=alt.Color('cluster', scale=alt.Scale(domain=[i for i in range(n_clusters)], range=range_)),
+        tooltip=['name', 'artist']
     ).interactive()
-
     st.altair_chart(graph, use_container_width=True)
 
 def num_components_graph(ax, num_columns, evr):
@@ -202,7 +174,6 @@ def num_clusters_graph(ax, max_clusters, wcss):
 
 @st.cache(allow_output_mutation=True)
 def kmeans(df):
-    print("got here")
     df_X = df.drop(columns=df.columns[:4])
     print("Standard scaler and PCA")
     scaler = StandardScaler()
@@ -241,6 +212,7 @@ def kmeans(df):
     # fig.tight_layout()
     return df, n_clusters
 
+@st.cache(allow_output_mutation=True)
 def get_color_range(n_clusters):
     cmap = cm.get_cmap('tab20b')    
     range_ = []
@@ -256,8 +228,7 @@ def get_color_range(n_clusters):
         range_.append(color)
     return range_
 
-def visualize_clusters(df, n_clusters):
-    range_ = get_color_range(n_clusters)
+def visualize_clusters(df, n_clusters, range_):
     graph = alt.Chart(df.reset_index()).mark_point(filled=True, size=60).encode(
         x=alt.X('Component 2'),
         y=alt.Y('Component 1'),
@@ -267,6 +238,7 @@ def visualize_clusters(df, n_clusters):
     ).interactive()
     st.altair_chart(graph, use_container_width=True)
 
+@st.cache(allow_output_mutation=True)
 def make_normalized_df(df, col_sep):
     non_features = df[df.columns[:col_sep]]
     features = df[df.columns[col_sep:]]
@@ -274,6 +246,7 @@ def make_normalized_df(df, col_sep):
     scaled = pd.DataFrame(norm, index=df.index, columns = df.columns[col_sep:])
     return pd.concat([non_features, scaled], axis=1)
 
+@st.cache(allow_output_mutation=True)
 def make_radar_chart(norm_df, n_clusters):
     fig = go.Figure()
     cmap = cm.get_cmap('tab20b')
@@ -285,10 +258,12 @@ def make_radar_chart(norm_df, n_clusters):
                 visible=True,
                 range=[0, 1]
                 ))
+    maxes = dict()
 
     for i in range(n_clusters):
         subset = norm_df[norm_df['cluster'] == i]
-        data = [np.mean(subset[col]) for col in subset.columns[5:]]
+        data = [np.mean(subset[col]) for col in angles[:-1]]
+        maxes[i] = data.index(max(data))
         data.append(data[0])
         fig.add_trace(go.Scatterpolar(
             r=data,
@@ -304,22 +279,24 @@ def make_radar_chart(norm_df, n_clusters):
             showlegend=True
     )
     fig.update_traces()
-    return fig
+    return fig, maxes
 
+@st.cache(allow_output_mutation=True)
 def preview_cluster_playlist(df, cluster):
     df = df[df['cluster'] == cluster]
-    st.write(df)
-    if st.button("Export to playlist"):
-        result = sp.user_playlist_create(user_config['username'], 'cluster'+str(cluster), public=True, collaborative=False, description='')
-        playlist_id = result['id']
-        songs = list(df.loc[df['cluster'] == cluster]['track_URI'])
-        if len(songs) > 100:
-            sp.playlist_add_items(playlist_id, songs[:100])
-            sp.playlist_add_items(playlist_id, songs[100:])
-        else:
-            sp.playlist_add_items(playlist_id, songs)
-    else:
-        pass
+
+    # if st.button("Export to playlist"):
+    #     result = sp.user_playlist_create(user_config['username'], 'cluster'+str(cluster), public=True, collaborative=False, description='')
+    #     playlist_id = result['id']
+    #     songs = list(df.loc[df['cluster'] == cluster]['track_URI'])
+    #     if len(songs) > 100:
+    #         sp.playlist_add_items(playlist_id, songs[:100])
+    #         sp.playlist_add_items(playlist_id, songs[100:])
+    #     else:
+    #         sp.playlist_add_items(playlist_id, songs)
+    # else:
+    #     pass
+    return df
 
 if __name__ == "__main__":
     # user_config = load_config()
