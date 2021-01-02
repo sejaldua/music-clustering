@@ -85,30 +85,38 @@ def load_config():
 # @st.cache(allow_output_mutation=True)
 def get_token():
     print("generating token")
-    # token = util.prompt_for_user_token(os.environ.get('USERNAME'), 
-    #     scope='playlist-read-private', 
-    #     client_id=os.environ.get('CLIENT_ID'), 
-    #     client_secret=os.environ.get('CLIENT_SECRET'), 
-    #     redirect_uri=os.environ.get('REDIRECT_URI'),
-    #     show_dialog=True)
-    # return spotipy.Spotify(auth=token)
-    # print(os.environ.get('CLIENT_ID'))
-    auth_manager = spotipy.oauth2.SpotifyOAuth(scope='playlist-read-private playlist-modify-public', 
+    token = util.prompt_for_user_token( 
+        scope='playlist-read-private', 
         client_id=os.environ.get('CLIENT_ID'), 
         client_secret=os.environ.get('CLIENT_SECRET'), 
-        redirect_uri=os.environ.get('REDIRECT_URI'), 
+        redirect_uri=os.environ.get('REDIRECT_URI'),
         show_dialog=True)
+    sp = spotipy.Spotify(auth=token)
+    # print(os.environ.get('CLIENT_ID'))
+    # auth_manager = spotipy.oauth2.SpotifyOAuth(scope='playlist-read-private playlist-modify-public', 
+        # client_id=os.environ.get('CLIENT_ID'), 
+        # client_secret=os.environ.get('CLIENT_SECRET'), 
+        # redirect_uri=os.environ.get('REDIRECT_URI'),
+        # show_dialog=True)
+    
     # if not auth_manager.get_cached_token():
+    # # auth_manager.get_access_token(as_dict=False, check_cache=True)
     #     auth_url = auth_manager.get_authorize_url()
     #     # print(auth_url)
+    #     res = requests.get(auth_url)
+    #     # print(res.url)
+        # code = auth_manager.parse_response_code(res.url)
+        # print(code)
+        # print(auth_url)
     # # html_string = f'<h2><a href="{auth_url}">Sign in</a></h2>'
     # # st.markdown(html_string, unsafe_allow_html=True)
-    #     res = requests.get(auth_url)
+        # res = requests.get(auth_url)
     #     # print(res)
-    # else:
-    #     print(auth_manager.get_cached_token())
-    sp =  spotipy.Spotify(auth_manager=auth_manager)
-    st.markdown(f'<h2>Hi {sp.me()["display_name"]}</h2>', unsafe_allow_html=True)
+    # sp =  spotipy.Spotify(auth_manager=auth_manager)
+    # me = sp.me()
+    # pprint(me)
+    st.markdown(f'<h2>Hi {sp.me()["display_name"]} 👋</h2>', unsafe_allow_html=True)
+    return sp
 
 # A function to extract track names and URIs from a playlist
 def get_playlist_info(username, playlist_uri):
@@ -301,17 +309,17 @@ def make_radar_chart(norm_df, n_clusters):
 def preview_cluster_playlist(df, cluster):
     df = df[df['cluster'] == cluster]
     st.write(df)
-    # if st.button("Export to playlist"):
-    #     result = sp.user_playlist_create(user_config['username'], 'cluster'+str(cluster), public=True, collaborative=False, description='')
-    #     playlist_id = result['id']
-    #     songs = list(df.loc[df['cluster'] == cluster]['track_URI'])
-    #     if len(songs) > 100:
-    #         sp.playlist_add_items(playlist_id, songs[:100])
-    #         sp.playlist_add_items(playlist_id, songs[100:])
-    #     else:
-    #         sp.playlist_add_items(playlist_id, songs)
-    # else:
-    #     pass
+    if st.button("Export to playlist"):
+        result = sp.user_playlist_create(user_config['username'], 'cluster'+str(cluster), public=True, collaborative=False, description='')
+        playlist_id = result['id']
+        songs = list(df.loc[df['cluster'] == cluster]['track_URI'])
+        if len(songs) > 100:
+            sp.playlist_add_items(playlist_id, songs[:100])
+            sp.playlist_add_items(playlist_id, songs[100:])
+        else:
+            sp.playlist_add_items(playlist_id, songs)
+    else:
+        pass
 
 if __name__ == "__main__":
     # user_config = load_config()
