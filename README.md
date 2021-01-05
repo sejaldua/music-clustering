@@ -5,7 +5,8 @@ If you have not already stumbled across my Towards Data Science article for this
 ## Source Code
 
 Note: you must have access to the Spotify Developer API to use this repo. :)  
-All code is contained in `notebook.ipynb`.
+The technical code for this project is contained in `notebook.ipynb`.  
+The web application containing user-friendly, interactive visualization code-- lives in `app.py`.  
 
 ## Visualizations
 
