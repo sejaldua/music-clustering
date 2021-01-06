@@ -33,16 +33,19 @@ def main():
     if st.sidebar.button("Run Algorithm") or session_state.checkboxed:
         session_state.checkboxed = True
         print(playlists)
+        # acquire the data via Spotify API
         df = concatenate_playlists(playlists)
         if df is None:
             st.warning("One of your playlist URIs was not entered properly")
             st.stop()
         else:
+            # dataframe for inspection and exploration
             st.write(df)
 
+            # implement k-means clustering with PCA
             clustered_df, n_clusters = kmeans(df)
-            print(clustered_df['playlist'].value_counts())        
-
+            
+            # make radar chart to help understand the cluster differences
             cluster_labels = clustered_df['Cluster']
             orig = clustered_df.drop(columns=['Cluster', "Component 1", "Component 2"])
             orig.insert(4, "cluster", cluster_labels)
@@ -50,9 +53,11 @@ def main():
             fig, maxes = make_radar_chart(norm_df, n_clusters)
             st.write(fig)
 
+            # interactive visualizations of clusters on 2D plane
             range_ = get_color_range(n_clusters)
             visualize_clusters(clustered_df, n_clusters, range_)
 
+            # within-cluster exploration
             explore_df = orig.copy()
             keys = sorted(list(explore_df["cluster"].unique()))
             cluster = st.selectbox("Choose a cluster to preview", keys, index=0)
@@ -220,6 +225,7 @@ def kmeans(df):
     # fig, (ax1, ax2) = plt.subplots(1, 2)
     # ax1 = num_components_graph(ax1, len(df_X.columns), evr)
     # ax2 = num_clusters_graph(ax2, max_clusters, wcss)
+    # fig.tight_layout()
     print("Performing KMeans")
     kmeans_pca = KMeans(n_clusters=n_clusters, init='k-means++', random_state=42)
     kmeans_pca.fit(scores_pca)
@@ -229,7 +235,6 @@ def kmeans(df):
     df['Cluster'] = df_seg_pca_kmeans['Cluster']
     df['Component 1'] = df_seg_pca_kmeans['Component 1']
     df['Component 2'] = df_seg_pca_kmeans['Component 2']
-    # fig.tight_layout()
     return df, n_clusters
 
 @st.cache(allow_output_mutation=True)
