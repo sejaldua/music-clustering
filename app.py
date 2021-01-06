@@ -22,7 +22,7 @@ columns = ['name', 'artist', 'track_URI', 'playlist', 'acousticness', 'danceabil
 
 def main():
     st.markdown("## Welcome to Playlist Blendr :wave:")
-    st.markdown("### This web app uses machine learning techniques to cluster music by similar audio features so that you can cultivate a cohesive vibe to satisfy your listening needs!")
+    st.markdown("This web app uses machine learning techniques to cluster music by similar audio features so that you can cultivate a cohesive vibe to satisfy your listening needs!")
     num_playlists = st.sidebar.number_input('How many playlists would you like to cluster?', 1, 5, 2)
     if session_state.num != num_playlists:
         session_state.num = num_playlists
