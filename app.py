@@ -17,6 +17,8 @@ from matplotlib import cm
 import SessionState
 from spotipy.oauth2 import SpotifyClientCredentials
 
+st.set_page_config(page_title='Playlist Blendr', page_icon=":notes:")
+
 session_state = SessionState.get(checkboxed=False, num=2)
 columns = ['name', 'artist', 'track_URI', 'playlist', 'acousticness', 'danceability', 'energy', 'instrumentalness', 'liveness', 'speechiness', 'tempo', 'valence']
 
