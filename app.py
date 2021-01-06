@@ -17,12 +17,16 @@ from matplotlib import cm
 import SessionState
 from spotipy.oauth2 import SpotifyClientCredentials
 
-session_state = SessionState.get(checkboxed=False)
+session_state = SessionState.get(checkboxed=False, num=2)
+columns = ['name', 'artist', 'track_URI', 'playlist', 'acousticness', 'danceability', 'energy', 'instrumentalness', 'liveness', 'loudness', 'speechiness', 'tempo', 'valence']
 
 def main():
     st.markdown("## Welcome to Playlist Blendr :wave:")
     st.markdown("### This web app uses machine learning techniques to cluster music by similar audio features so that you can cultivate a cohesive vibe to satisfy your listening needs!")
     num_playlists = st.sidebar.number_input('How many playlists would you like to cluster?', 1, 5, 2)
+    if session_state.num != num_playlists:
+        session_state.num = num_playlists
+        session_state.checkboxed = False
     playlists = playlist_user_input(num_playlists)
     if st.sidebar.button("Run Algorithm") or session_state.checkboxed:
         session_state.checkboxed = True
@@ -35,7 +39,7 @@ def main():
             st.write(df)
 
             clustered_df, n_clusters = kmeans(df)
-            range_ = get_color_range(n_clusters)
+            print(clustered_df['playlist'].value_counts())        
 
             cluster_labels = clustered_df['Cluster']
             orig = clustered_df.drop(columns=['Cluster', "Component 1", "Component 2"])
@@ -44,6 +48,7 @@ def main():
             fig, maxes = make_radar_chart(norm_df, n_clusters)
             st.write(fig)
 
+            range_ = get_color_range(n_clusters)
             visualize_clusters(clustered_df, n_clusters, range_)
 
             explore_df = orig.copy()
@@ -59,18 +64,23 @@ def main():
 
 def playlist_user_input(num_playlists):
     playlists = []
-    defaults = ["spotify:playlist:37i9dQZF1DX4OzrY981I1W", "spotify:playlist:37i9dQZF1DX9UhtB5CtZ7e", "spotify:playlist:37i9dQZF1DWSP55jZj2ES3"]
-    st.sidebar.write("To locate a playlist URI, go to the playlist on Spotify, click the '...' button at the top, then go to Share > Copy Spotify URI")
+    defaults = ["spotify:playlist:37i9dQZF1DX9UhtB5CtZ7e", "spotify:playlist:37i9dQZF1DWSP55jZj2ES3",
+    "spotify:playlist:37i9dQZF1DX4OzrY981I1W",
+    "spotify:playlist:37i9dQZF1DX8dTWjpijlub",
+    "spotify:playlist:37i9dQZF1DWUE76cNNotSg"
+    ]
+    st.sidebar.write("To locate a playlist URI, go to the playlist on Spotify, click the '...' button at the top, then go to Share > Copy Spotify URI. Some examples are pre-filled :)")
     for i in range(num_playlists):
-        playlists.append(st.sidebar.text_input("Playlist URI " + str(i+1)))
+        playlists.append(st.sidebar.text_input("Playlist URI " + str(i+1), defaults[i]))
     return playlists
 
-@st.cache(allow_output_mutation=True)
 def concatenate_playlists(playlists):
-    df = pd.DataFrame(columns=['name', 'artist', 'track_URI', 'playlist', 'acousticness', 'danceability', 'energy', 'instrumentalness', 'liveness', 'loudness', 'speechiness', 'tempo', 'valence'])
+    global columns
+    print("concatenate playlists")
+    df = pd.DataFrame(columns=columns)
     if all(playlists):
         for playlist_uri in playlists:
-            df = get_features_for_playlist(df, os.environ.get('USERNAME'), playlist_uri)
+            df = pd.concat([df, get_features_for_playlist(os.environ.get('USERNAME'), playlist_uri)], ignore_index=True, axis=0)
         return df
     else:
         return None
@@ -123,7 +133,11 @@ def get_playlist_info(username, playlist_uri):
     return playlist_name, names, artists, uris
 
 @st.cache(allow_output_mutation=True)
-def get_features_for_playlist(df, username, uri):
+def get_features_for_playlist(username, uri):
+    # initialize_df
+    global columns
+    temp_df = pd.DataFrame(columns=columns)
+
     # get all track metadata from given playlist
     playlist_name, names, artists, uris = get_playlist_info(username, uri)
     
@@ -134,12 +148,12 @@ def get_features_for_playlist(df, username, uri):
         audio_features = sp.audio_features(track_uri)
 
         # get relevant audio features
-        feature_subset = [audio_features[0][col] for col in df.columns if col not in ["name", "artist", "track_URI", "playlist"]]
+        feature_subset = [audio_features[0][col] for col in temp_df.columns if col not in ["name", "artist", "track_URI", "playlist"]]
 
         # compose a row of the dataframe by flattening the list of audio features
         row = [name, artist, track_uri, playlist_name, *feature_subset]
-        df.loc[len(df.index)] = row
-    return df
+        temp_df.loc[len(temp_df.index)] = row
+    return temp_df
 
 def optimal_number_of_clusters(wcss):
     x1, y1 = 2, wcss[0]
@@ -236,7 +250,7 @@ def visualize_clusters(df, n_clusters, range_):
     graph = alt.Chart(df.reset_index()).mark_point(filled=True, size=60).encode(
         x=alt.X('Component 2'),
         y=alt.Y('Component 1'),
-        shape=alt.Shape('playlist:N', scale=alt.Scale(range=["circle", "diamond", "square", "triangle-down", "triangle-up"])),
+        shape=alt.Shape('playlist', scale=alt.Scale(range=["circle", "diamond", "square", "triangle-down", "triangle-up"])),
         color=alt.Color('Cluster', scale=alt.Scale(domain=[i for i in range(n_clusters)], range=range_)),
         tooltip=['name', 'artist']
     ).interactive()
@@ -244,6 +258,7 @@ def visualize_clusters(df, n_clusters, range_):
 
 @st.cache(allow_output_mutation=True)
 def make_normalized_df(df, col_sep):
+    print(len(df))
     non_features = df[df.columns[:col_sep]]
     features = df[df.columns[col_sep:]]
     norm = MinMaxScaler().fit_transform(features)
