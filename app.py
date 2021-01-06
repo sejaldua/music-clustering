@@ -33,16 +33,18 @@ def main():
             st.stop()
         else:
             st.write(df)
+
             clustered_df, n_clusters = kmeans(df)
             range_ = get_color_range(n_clusters)
-            visualize_clusters(clustered_df, n_clusters, range_)
-            
+
             cluster_labels = clustered_df['Cluster']
             orig = clustered_df.drop(columns=['Cluster', "Component 1", "Component 2"])
             orig.insert(4, "cluster", cluster_labels)
             norm_df = make_normalized_df(orig, 5)
             fig, maxes = make_radar_chart(norm_df, n_clusters)
             st.write(fig)
+
+            visualize_clusters(clustered_df, n_clusters, range_)
 
             explore_df = orig.copy()
             keys = sorted(list(explore_df["cluster"].unique()))
@@ -57,7 +59,7 @@ def main():
 
 def playlist_user_input(num_playlists):
     playlists = []
-    defaults = ["spotify:playlist:4ZvKulfjQx6Xi0Pxm6tlC2", "spotify:playlist:7iAkkvQ11nmfS1Rv1N5YYr", "spotify:playlist:6hQBKDy8WTuf0lHEKgEnZo"]
+    defaults = ["spotify:playlist:37i9dQZF1DX4OzrY981I1W", "spotify:playlist:37i9dQZF1DX9UhtB5CtZ7e", "spotify:playlist:37i9dQZF1DWSP55jZj2ES3"]
     st.sidebar.write("To locate a playlist URI, go to the playlist on Spotify, click the '...' button at the top, then go to Share > Copy Spotify URI")
     for i in range(num_playlists):
         playlists.append(st.sidebar.text_input("Playlist URI " + str(i+1)))
@@ -305,7 +307,4 @@ if __name__ == "__main__":
     
     # Initialize Spotify API token
     sp = get_token()
-
-
-    
     main()
