@@ -18,7 +18,7 @@ import SessionState
 from spotipy.oauth2 import SpotifyClientCredentials
 
 session_state = SessionState.get(checkboxed=False, num=2)
-columns = ['name', 'artist', 'track_URI', 'playlist', 'acousticness', 'danceability', 'energy', 'instrumentalness', 'liveness', 'loudness', 'speechiness', 'tempo', 'valence']
+columns = ['name', 'artist', 'track_URI', 'playlist', 'acousticness', 'danceability', 'energy', 'instrumentalness', 'liveness', 'speechiness', 'tempo', 'valence']
 
 def main():
     st.markdown("## Welcome to Playlist Blendr :wave:")
