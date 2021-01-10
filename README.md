@@ -8,6 +8,11 @@ Note: you must have access to the Spotify Developer API to use this repo. :)
 The technical code for this project is contained in `notebook.ipynb`.  
 The web application containing user-friendly, interactive visualization code-- lives in `app.py`.  
 
+### Running the Streamlit App Locally
+
+1. `pip install -r requirements.txt`
+2. `streamlit run app.py`
+
 ## Visualizations
 
 <img style="padding-right: 10px" src="./visualizations/cumulative_variance_plot.png" width="300"><img src="./visualizations/num_clusters.png" width="300">
