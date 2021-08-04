@@ -2,6 +2,8 @@
 
 If you have not already stumbled across my Towards Data Science article for this project, please check it out [here](https://towardsdatascience.com/k-means-clustering-and-pca-to-categorize-music-by-similar-audio-features-df09c93e8b64)!
 
+If you would like to support this project, you can fuel me with ☕ here: [ko-fi.com/sejaldua](https://ko-fi.com/sejaldua)
+
 ## Source Code
 
 Note: you must have access to the Spotify Developer API to use this repo. :)  
